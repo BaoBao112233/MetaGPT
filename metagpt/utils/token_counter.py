@@ -53,6 +53,7 @@ TOKEN_COSTS = {
     "glm-4-flash": {"prompt": 0, "completion": 0},
     "glm-4-plus": {"prompt": 0.007, "completion": 0.007},
     "gemini-1.5-flash": {"prompt": 0.000075, "completion": 0.0003},
+    "gemini-2.5-flash": {"prompt": 0.000075, "completion": 0.0003},
     "gemini-1.5-pro": {"prompt": 0.0035, "completion": 0.0105},
     "gemini-1.0-pro": {"prompt": 0.0005, "completion": 0.0015},
     "moonshot-v1-8k": {"prompt": 0.012, "completion": 0.012},  # prompt + completion tokens=0.012￥/k-tokens

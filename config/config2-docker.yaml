@@ -1,0 +1,7 @@
+llm:
+  api_type: "vertex_ai"
+  model: "gemini-2.5-flash-002"
+  max_token: 8192
+  service_account_path: "/app/config/service-account.json"
+  project_id: "metagpt-446414"
+  location: "us-central1"

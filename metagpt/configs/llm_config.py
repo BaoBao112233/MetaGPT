@@ -44,6 +44,7 @@ class LLMType(Enum):
     BEDROCK = "bedrock"
     ARK = "ark"  # https://www.volcengine.com/docs/82379/1263482#python-sdk
     LLAMA_API = "llama_api"
+    VERTEX_AI = "vertex_ai"
 
     def __missing__(self, key):
         return self.OPENAI
@@ -96,6 +97,11 @@ class LLMConfig(YamlModel):
 
     # For Amazon Bedrock
     region_name: str = None
+
+    # For Vertex AI
+    project_id: Optional[str] = None
+    location: Optional[str] = "us-central1"
+    service_account_path: Optional[str] = None
 
     # For Network
     proxy: Optional[str] = None

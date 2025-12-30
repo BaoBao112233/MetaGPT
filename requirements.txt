@@ -1,16 +1,16 @@
-aiohttp==3.8.6
+aiohttp>=3.9.0
 #azure_storage==0.37.0
 channels==4.0.0
 # Django==4.1.5
 # docx==0.2.4
 #faiss==1.5.3
-faiss_cpu==1.7.4
+faiss_cpu>=1.7.4
 fire==0.4.0
 typer==0.9.0
 # godot==0.1.1
 # google_api_python_client==2.93.0  # Used by search_engine.py
 lancedb==0.4.0
-loguru==0.6.0
+loguru>=0.7.0
 meilisearch==0.21.0
 numpy~=1.26.4
 openai~=1.64.0
@@ -33,7 +33,7 @@ tqdm==4.66.2
 # webdriver_manager<3.9
 anthropic==0.47.2
 typing-inspect==0.8.0
-libcst==1.0.1
+libcst>=1.1.0
 qdrant-client==1.7.0
 grpcio~=1.67.0
 grpcio-tools~=1.62.3
@@ -66,6 +66,7 @@ gitignore-parser==0.1.9
 websockets>=10.0,<12.0
 networkx~=3.2.1
 google-generativeai==0.4.1
+google-cloud-aiplatform
 playwright>=1.26  # used at metagpt/tools/libs/web_scraping.py
 anytree
 ipywidgets==8.1.1
