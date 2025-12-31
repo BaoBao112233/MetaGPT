@@ -664,6 +664,7 @@ class Editor(BaseModel):
         except ValueError as e:
             return f"Invalid input: {e}\n"
         except Exception as e:
+            lines = lines if "lines" in locals() else []
             guidance_message = self._get_indentation_info(content, start or len(lines))
             guidance_message += (
                 "You either need to 1) Specify the correct start/end line arguments or 2) Enlarge the range of original code.\n"
@@ -672,16 +673,18 @@ class Editor(BaseModel):
             error_info = ERROR_GUIDANCE.format(
                 linter_error_msg=LINTER_ERROR_MSG + str(e),
                 window_after_applied=self._print_window(file_name, start or len(lines), 100),
-                window_before_applied=self._print_window(Path(temp_backup_file.name), start or len(lines), 100),
+                window_before_applied=self._print_window(
+                    Path(temp_backup_file.name) if temp_backup_file else None, start or len(lines), 100
+                ),
                 guidance_message=guidance_message,
             ).strip()
             # Clean up the temporary file if an error occurs
-            shutil.move(temp_backup_file.name, src_abs_path)
+            if temp_backup_file and Path(temp_backup_file.name).exists():
+                shutil.move(temp_backup_file.name, src_abs_path)
             if temp_file_path and Path(temp_file_path).exists():
-                Path(temp_file_path).unlink()
-
-            # logger.warning(f"An unexpected error occurred: {e}")
+                os.remove(temp_file_path)
             raise Exception(f"{error_info}") from e
+
         # Update the file information and print the updated content
         with file_name.open("r", encoding="utf-8") as file:
             n_total_lines = max(1, len(file.readlines()))

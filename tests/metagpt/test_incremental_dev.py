@@ -11,7 +11,7 @@ import subprocess
 import time
 
 import pytest
-from typer.testing import CliRunner
+from click.testing import CliRunner
 
 from metagpt.const import TEST_DATA_PATH
 from metagpt.logs import logger

@@ -6,7 +6,7 @@
 @File    : test_software_company.py
 """
 import pytest
-from typer.testing import CliRunner
+from click.testing import CliRunner
 
 from metagpt.logs import logger
 from metagpt.software_company import app

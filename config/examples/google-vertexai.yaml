@@ -1,0 +1,5 @@
+llm:
+  api_type: vertex_ai
+  max_token: 8192
+  model: gemini-2.5-flash
+  service_account_path: /app/config/service-account.json
