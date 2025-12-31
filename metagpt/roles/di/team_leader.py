@@ -61,14 +61,14 @@ class TeamLeader(RoleZero):
         self.instruction = TL_INSTRUCTION.format(team_info=self._get_team_info())
         return await super()._think()
 
-    def publish_message(self, msg: Message, send_to="no one"):
+    def publish_message(self, msg: Message, send_to=None):
         """Overwrite Role.publish_message, send to no one if called within Role.run (except for quick think), send to the specified role if called dynamically."""
         if not msg:
             return
         if not self.rc.env:
             # If env does not exist, do not publish the message
             return
-        if msg.cause_by != QUICK_THINK_TAG:
+        if send_to is not None:
             msg.send_to = send_to
         self.rc.env.publish_message(msg, publicer=self.profile)
 

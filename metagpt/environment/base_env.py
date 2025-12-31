@@ -186,6 +186,7 @@ class Environment(ExtEnv):
         # According to the routing feature plan in Chapter 2.2.3.2 of RFC 113
         for role, addrs in self.member_addrs.items():
             if is_send_to(message, addrs):
+                logger.info(f"Delivering message to {role.name} ({role.profile})")
                 role.put_message(message)
                 found = True
         if not found:

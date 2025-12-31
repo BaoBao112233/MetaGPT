@@ -430,6 +430,7 @@ class Role(BaseRole, SerializationMixin, ContextMixin, BaseModel):
         """If the role belongs to env, then the role's messages will be broadcast to env"""
         if not msg:
             return
+        logger.debug(f"Role {self.name} publishing message: {msg.content[:50]}... send_to={msg.send_to}")
         if MESSAGE_ROUTE_TO_SELF in msg.send_to:
             msg.send_to.add(any_to_str(self))
             msg.send_to.remove(MESSAGE_ROUTE_TO_SELF)

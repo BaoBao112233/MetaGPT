@@ -127,7 +127,7 @@ class Team(BaseModel):
 
         while n_round > 0:
             if self.env.is_idle:
-                logger.debug("All roles are idle.")
+                logger.info(f"All roles are idle. Environment state: {[(r.name, r.is_idle) for r in self.env.roles.values()]}")
                 break
             n_round -= 1
             self._check_balance()

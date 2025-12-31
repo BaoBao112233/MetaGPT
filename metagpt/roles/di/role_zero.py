@@ -5,6 +5,7 @@ import json
 import re
 import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Callable, Literal, Optional, Tuple
 
 from pydantic import Field, model_validator
@@ -104,6 +105,12 @@ class RoleZero(Role):
         # We force using this parameter for DataAnalyst
         assert self.react_mode == "react"
 
+        # Set editor working directory
+        if self.config.project_path:
+            self.editor.working_dir = Path(self.config.project_path)
+        elif self.config.project_name:
+            self.editor.working_dir = Path(self.config.workspace.path) / self.config.project_name
+
         # Roughly the same part as DataInterpreter.set_plan_and_tool
         self._set_react_mode(react_mode=self.react_mode, max_react_loop=self.max_react_loop)
         if self.tools and not self.tool_recommender:
@@ -124,6 +131,7 @@ class RoleZero(Role):
             "Plan.replace_task": self.planner.plan.replace_task,
             "RoleZero.ask_human": self.ask_human,
             "RoleZero.reply_to_human": self.reply_to_human,
+            "Agent.respond": self.reply_to_human,
         }
         if self.config.enable_search:
             self.tool_execution_map["SearchEnhancedQA.run"] = SearchEnhancedQA().run
@@ -284,7 +292,10 @@ class RoleZero(Role):
         commands, ok, self.command_rsp = await parse_commands(
             command_rsp=self.command_rsp, llm=self.llm, exclusive_tool_commands=self.exclusive_tool_commands
         )
-        self.rc.memory.add(AIMessage(content=self.command_rsp))
+        
+        # Publish the command response so others (like ProjectReporter) can see the plan and code
+        self.publish_message(AIMessage(content=self.command_rsp, cause_by=RunCommand))
+        
         if not ok:
             error_msg = commands
             self.rc.memory.add(UserMessage(content=error_msg, cause_by=RunCommand))
@@ -311,29 +322,25 @@ class RoleZero(Role):
 
         actions_taken = 0
         rsp = AIMessage(content="No actions taken yet", cause_by=Action)  # will be overwritten after Role _act
-        while actions_taken < self.rc.max_react_loop:
-            # NOTE: Diff 2: Keep observing within _react, news will go into memory, allowing adapting to new info
-            await self._observe()
+        
+        # NOTE: We removed the while loop to allow other roles (like ProjectReporter) 
+        # to run between steps in the environment. The Team/Environment loop will 
+        # call this role again as long as it's not idle.
+        
+        # observe
+        await self._observe()
 
-            # think
-            has_todo = await self._think()
-            if not has_todo:
-                break
-            # act
-            logger.debug(f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
-            rsp = await self._act()
-            actions_taken += 1
-
-            # post-check
-            if self.rc.max_react_loop >= 10 and actions_taken >= self.rc.max_react_loop:
-                # If max_react_loop is a small value (e.g. < 10), it is intended to be reached and make the agent stop
-                logger.warning(f"reached max_react_loop: {actions_taken}")
-                human_rsp = await self.ask_human(
-                    "I have reached my max action rounds, do you want me to continue? Yes or no"
-                )
-                if "yes" in human_rsp.lower():
-                    actions_taken = 0
-        return rsp  # return output from the last action
+        # think
+        has_todo = await self._think()
+        if not has_todo:
+            return rsp
+            
+        # act
+        logger.debug(f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
+        rsp = await self._act()
+        
+        # If the agent decided to end, it will have set state to -1 in _end()
+        return rsp  # return output from the action
 
     def format_quick_system_prompt(self) -> str:
         """Format the system prompt for quick thinking."""
@@ -467,9 +474,12 @@ class RoleZero(Role):
         # NOTE: Can be overwritten in remote setting
         from metagpt.environment.mgx.mgx_env import MGXEnv  # avoid circular import
 
-        if not isinstance(self.rc.env, MGXEnv):
-            return "Not in MGXEnv, command will not be executed."
-        return await self.rc.env.reply_to_human(content, sent_from=self)
+        if isinstance(self.rc.env, MGXEnv):
+            return await self.rc.env.reply_to_human(content, sent_from=self)
+        
+        # In standard environment, we just log it and it will be part of the AIMessage returned by _act
+        logger.info(f"Reply to human: {content}")
+        return f"Replied to human: {content}"
 
     async def _end(self, **kwarg):
         self._set_state(-1)

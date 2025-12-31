@@ -32,11 +32,16 @@ def generate_repo(
         Engineer2,
         ProductManager,
         TeamLeader,
+        ProjectReporter,
     )
     from metagpt.team import Team
 
     config.update_via_cli(project_path, project_name, inc, reqa_file, max_auto_summarize_code)
     ctx = Context(config=config)
+    
+    # Ensure project_path is in context kwargs for roles to access
+    if config.project_path:
+        ctx.kwargs["project_path"] = config.project_path
 
     if not recover_path:
         company = Team(context=ctx)
@@ -48,6 +53,7 @@ def generate_repo(
                 Engineer2(),
                 # ProjectManager(),
                 DataAnalyst(),
+                ProjectReporter(),
             ]
         )
 

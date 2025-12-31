@@ -90,6 +90,8 @@ class LineNumberError(Exception):
         "scroll_down",
         "scroll_up",
         "create_file",
+        "create_dir",
+        "create_directory",
         "edit_file_by_replace",
         "insert_content_at_line",
         "append_file",
@@ -113,8 +115,13 @@ class Editor(BaseModel):
     enable_auto_lint: bool = False
     working_dir: Path = DEFAULT_WORKSPACE_ROOT
 
-    def write(self, path: str, content: str):
+    def write(self, **kwargs):
         """Write the whole content to a file. When used, make sure content arg contains the full content of the file."""
+        path = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filename") or kwargs.get("file_name")
+        content = kwargs.get("content") or kwargs.get("file_content") or kwargs.get("block_content")
+        
+        if not path or content is None:
+            raise ValueError(f"Missing required arguments for write: path={path}, content={'provided' if content is not None else 'missing'}")
 
         path = self._try_fix_path(path)
 
@@ -130,8 +137,11 @@ class Editor(BaseModel):
         # self.resource.report(path, "path")
         return f"The writing/coding the of the file {os.path.basename(path)}' is now completed. The file '{os.path.basename(path)}' has been successfully created."
 
-    async def read(self, path: str) -> FileBlock:
+    async def read(self, **kwargs) -> FileBlock:
         """Read the whole content of a file. Using absolute paths as the argument for specifying the file location."""
+        path = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filename") or kwargs.get("file_name")
+        if not path:
+            raise ValueError("Missing required argument for read: path")
 
         path = self._try_fix_path(path)
 
@@ -276,9 +286,7 @@ class Editor(BaseModel):
         """
         self.working_dir = Path(path)
 
-    def open_file(
-        self, path: Union[Path, str], line_number: Optional[int] = 1, context_lines: Optional[int] = None
-    ) -> str:
+    def open_file(self, **kwargs) -> str:
         """Opens the file at the given path in the editor. If line_number is provided, the window will be moved to include that line.
         It only shows the first 100 lines by default! Max `context_lines` supported is 2000, use `scroll up/down`
         to view the file if you want to see more.
@@ -288,6 +296,13 @@ class Editor(BaseModel):
             line_number: int | None = 1: The line number to move to. Defaults to 1.
             context_lines: int | None = 100: Only shows this number of lines in the context window (usually from line 1), with line_number as the center (if possible). Defaults to 100.
         """
+        path = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filename") or kwargs.get("file_name")
+        line_number = kwargs.get("line_number", 1)
+        context_lines = kwargs.get("context_lines")
+
+        if not path:
+            raise ValueError("Missing required argument for open_file: path")
+
         if context_lines is None:
             context_lines = self.window
 
@@ -354,20 +369,52 @@ class Editor(BaseModel):
         output += self._print_window(self.current_file, self.current_line, self.window)
         return output
 
-    async def create_file(self, filename: str) -> str:
+    async def create_file(self, **kwargs) -> str:
         """Creates and opens a new file with the given name.
 
         Args:
-            filename: str: The name of the file to create. If the parent directory does not exist, it will be created.
+            filename (str): The name of the file to create.
+            path (str): Alias for filename.
+            file_path (str): Alias for filename.
+            content (str): The content to write to the file.
+            file_content (str): Alias for content.
         """
+        filename = kwargs.get("filename") or kwargs.get("path") or kwargs.get("file_path")
+        content = kwargs.get("content") or kwargs.get("file_content")
+
+        if not filename:
+            raise ValueError("filename, path, or file_path must be provided.")
+
         filename = self._try_fix_path(filename)
 
         if filename.exists():
-            raise FileExistsError(f"File '{filename}' already exists.")
-        await awrite(filename, "\n")
+            logger.warning(f"File '{filename}' already exists. Overwriting.")
+        
+        file_content = content if content is not None else "\n"
+        await awrite(filename, file_content)
 
-        self.open_file(filename)
+        self.open_file(path=filename)
         return f"[File {filename} created.]"
+
+    async def create_dir(self, **kwargs) -> str:
+        """Creates a new directory with the given name.
+
+        Args:
+            path (str): The name of the directory to create.
+            directory (str): Alias for path.
+            name (str): Alias for path.
+        """
+        path = kwargs.get("path") or kwargs.get("directory") or kwargs.get("name")
+        if not path:
+            raise ValueError("path, directory, or name must be provided.")
+        
+        path = self._try_fix_path(path)
+        path.mkdir(parents=True, exist_ok=True)
+        return f"[Directory {path} created.]"
+
+    async def create_directory(self, **kwargs) -> str:
+        """Alias for create_dir"""
+        return await self.create_dir(**kwargs)
 
     @staticmethod
     def _append_impl(lines, content):
@@ -928,7 +975,13 @@ class Editor(BaseModel):
         self.resource.report(file_name, "path")
         return ret_str
 
-    def insert_content_at_line(self, file_name: str, line_number: int, insert_content: str) -> str:
+    def insert_content_at_line(self, **kwargs) -> str:
+        file_name = kwargs.get("file_name") or kwargs.get("file_path") or kwargs.get("filename") or kwargs.get("path")
+        line_number = kwargs.get("line_number")
+        insert_content = kwargs.get("insert_content") or kwargs.get("content")
+
+        if not file_name or line_number is None or insert_content is None:
+            raise ValueError(f"Missing required arguments for insert_content_at_line: file_name={file_name}, line_number={line_number}, insert_content={'provided' if insert_content is not None else 'missing'}")
         """Insert a complete block of code before the given line number in a file. That is, the new content will start at the beginning of the specified line, and the existing content of that line will be moved down.
         This operation will NOT modify the content of the lines before or after the given line number.
         This function can not insert content the end of the file. Please use append_file instead,
@@ -975,7 +1028,12 @@ class Editor(BaseModel):
         self.resource.report(file_name, "path")
         return ret_str
 
-    def append_file(self, file_name: str, content: str) -> str:
+    def append_file(self, **kwargs) -> str:
+        file_name = kwargs.get("file_name") or kwargs.get("file_path") or kwargs.get("filename") or kwargs.get("path")
+        content = kwargs.get("content") or kwargs.get("file_content")
+
+        if not file_name or content is None:
+            raise ValueError(f"Missing required arguments for append_file: file_name={file_name}, content={'provided' if content is not None else 'missing'}")
         """Append content to the given file.
         It appends text `content` to the end of the specified file.
 
