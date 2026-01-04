@@ -41,7 +41,7 @@ def generate_repo(
     
     # Ensure project_path is in context kwargs for roles to access
     if config.project_path:
-        ctx.kwargs["project_path"] = config.project_path
+        ctx.kwargs.set("project_path", config.project_path)
 
     if not recover_path:
         company = Team(context=ctx)

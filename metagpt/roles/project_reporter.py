@@ -19,7 +19,16 @@ class WriteStepReport(Action):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         report_path = step_dir / f"report_{timestamp}.md"
         
+        # Build report content with file listing
         report_content = f"# Step Report: {step_name}\n\n{content}\n"
+        
+        # Add source code files section if available
+        if source_codes and len(source_codes) > 0:
+            report_content += f"\n## Source Code Files ({len(source_codes)} files)\n\n"
+            for file_path in source_codes.keys():
+                report_content += f"- `{file_path}`\n"
+            report_content += "\n"
+        
         await awrite(report_path, report_content)
         
         if source_codes:
@@ -92,6 +101,42 @@ class ProjectReporter(Role):
                 source_codes[f"block_{i}.txt"] = block
                 
         return source_codes
+    
+    def _scan_project_files(self, project_path: Path) -> dict[str, str]:
+        """Scan project directory and collect all source code files."""
+        source_codes = {}
+        if not project_path.exists():
+            return source_codes
+        
+        # Common source code extensions
+        code_extensions = {'.py', '.js', '.jsx', '.ts', '.tsx', '.html', '.css', '.json', 
+                          '.java', '.cpp', '.c', '.h', '.go', '.rs', '.rb', '.php', 
+                          '.vue', '.svelte', '.yaml', '.yml', '.toml', '.md', '.txt',
+                          '.sh', '.bash', '.sql', '.r', '.swift', '.kt'}
+        
+        # Exclude certain directories
+        exclude_dirs = {'node_modules', '__pycache__', '.git', 'venv', 'env', 
+                       '.venv', 'dist', 'build', '.pytest_cache', '.mypy_cache',
+                       'docs/steps'}  # Don't include our own reports
+        
+        try:
+            for item in project_path.rglob('*'):
+                # Skip excluded directories
+                if any(excluded in item.parts for excluded in exclude_dirs):
+                    continue
+                
+                # Only include files with code extensions
+                if item.is_file() and item.suffix.lower() in code_extensions:
+                    try:
+                        relative_path = item.relative_to(project_path)
+                        content = item.read_text(encoding='utf-8', errors='ignore')
+                        source_codes[str(relative_path)] = content
+                    except Exception as e:
+                        logger.warning(f"Could not read file {item}: {e}")
+        except Exception as e:
+            logger.warning(f"Error scanning project directory: {e}")
+        
+        return source_codes
 
     async def _act(self) -> Message:
         logger.info(f"{self._setting}: ready to write report")
@@ -121,7 +166,18 @@ class ProjectReporter(Role):
             else:
                 step_name = "UnknownStep"
             
+            # Extract source codes from message content
             source_codes = self._extract_source_codes(str(msg.content))
+            
+            # Also scan project directory for all source files
+            all_project_files = self._scan_project_files(project_path)
+            if all_project_files:
+                logger.info(f"Found {len(all_project_files)} source files in project directory")
+                # Merge with extracted codes, prioritizing message content
+                for file_path, content in all_project_files.items():
+                    if file_path not in source_codes:
+                        source_codes[file_path] = content
+            
             content = await self._think_report_content(msg)
             await WriteStepReport().run(step_name, content, project_path, self.step_counter, source_codes)
             last_content = content
