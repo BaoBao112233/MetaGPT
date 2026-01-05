@@ -959,13 +959,11 @@ def get_markdown_codeblock_type(filename: str = None, mime_type: str = None) -> 
 
 
 def get_project_srcs_path(workdir: str | Path) -> Path:
-    src_workdir_path = workdir / ".src_workspace"
-    if src_workdir_path.exists():
-        with open(src_workdir_path, "r") as file:
-            src_name = file.read()
-    else:
-        src_name = Path(workdir).name
-    return Path(workdir) / src_name
+    """
+    Get the source code directory path for a project.
+    Now always returns 'src/' subdirectory to organize code separately from docs.
+    """
+    return Path(workdir) / "src"
 
 
 async def init_python_folder(workdir: str | Path):

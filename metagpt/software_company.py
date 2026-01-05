@@ -29,8 +29,11 @@ def generate_repo(
     from metagpt.roles import (
         Architect,
         DataAnalyst,
+        Engineer,
         Engineer2,
         ProductManager,
+        ProjectManager,
+        QaEngineer,
         TeamLeader,
         ProjectReporter,
     )
@@ -45,25 +48,33 @@ def generate_repo(
 
     if not recover_path:
         company = Team(context=ctx)
-        company.hire(
-            [
+        
+        # Choose workflow based on implement flag
+        if implement:
+            # Standard workflow with TeamLeader coordinating:
+            # TL -> PM -> Architect -> PM -> Engineer
+            # This creates proper src/ structure
+            company.hire([
+                TeamLeader(),  # Required by MGXEnv
+                ProductManager(),
+                Architect(),
+                ProjectManager(),
+                Engineer(n_borg=5, use_code_review=code_review),
+            ])
+            if run_tests:
+                company.hire([QaEngineer()])
+                if n_round < 8:
+                    n_round = 8
+        else:
+            # TeamLeader workflow for analysis/planning only (no implementation)
+            company.hire([
                 TeamLeader(),
                 ProductManager(),
                 Architect(),
-                Engineer2(),
-                # ProjectManager(),
                 DataAnalyst(),
                 ProjectReporter(),
-            ]
-        )
+            ])
 
-        # if implement or code_review:
-        #     company.hire([Engineer(n_borg=5, use_code_review=code_review)])
-        #
-        # if run_tests:
-        #     company.hire([QaEngineer()])
-        #     if n_round < 8:
-        #         n_round = 8  # If `--run-tests` is enabled, at least 8 rounds are required to run all QA actions.
     else:
         stg_path = Path(recover_path)
         if not stg_path.exists() or not str(stg_path).endswith("team"):
