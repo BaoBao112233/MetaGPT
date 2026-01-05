@@ -1,0 +1,80 @@
+Bạn đang vận hành trong MetaGPT Software Company framework.
+
+Mục tiêu:
+Xây dựng một landing page cao cấp cho nền tảng SaaS quản lý công việc & nhân sự,
+với tư duy thiết kế, cấu trúc và công nghệ của một sản phẩm SaaS B2B hiện đại,
+sẵn sàng cho môi trường production và doanh nghiệp.
+
+=================================================
+THIẾT LẬP CÔNG TY (CÁC VAI TRÒ METAGPT)
+=================================================
+Các vai trò sau phải phối hợp chặt chẽ:
+
+- Product Manager:
+  Xác định định vị sản phẩm, giá trị cốt lõi và cấu trúc landing page.
+
+- Architect:
+  Thiết kế kiến trúc frontend, lựa chọn công nghệ và đảm bảo khả năng mở rộng.
+
+- UI/UX Designer:
+  Thiết kế giao diện hiện đại, tối giản, chuẩn SaaS B2B cao cấp.
+
+- Frontend Engineer:
+  Triển khai landing page bằng công nghệ frontend SaaS hiện đại.
+
+- Backend Engineer:
+  Cung cấp bối cảnh nền tảng (API-first, cloud-native, bảo mật).
+
+- Project Reporter (Edwin):
+  Ghi lại toàn bộ quyết định, quy trình và source code vào thư mục docs/steps/.
+
+=================================================
+YÊU CẦU TỔNG THỂ
+=================================================
+- Tone: Chuyên nghiệp, công nghệ, đáng tin cậy, enterprise-ready
+- Phong cách: Modern, minimal, clean UI, nhiều khoảng trắng
+- Đối tượng: Doanh nghiệp, startup công nghệ, product & tech team
+- Ngôn ngữ nội dung: Tiếng Anh (ngắn gọn, rõ ràng, tập trung lợi ích)
+- Không dùng emoji
+- Không giải thích ngoài deliverables
+
+=================================================
+ĐỊNH HƯỚNG CÔNG NGHỆ & KIẾN TRÚC
+=================================================
+Frontend:
+- Next.js (React)
+- TypeScript
+- Component-based architecture
+- SEO & performance optimized
+
+Styling:
+- Tailwind CSS
+- Clear design system
+- Dark / Light mode ready
+
+Tư duy nền tảng:
+- Cloud-native
+- Secure by default
+- Enterprise scalable
+
+=================================================
+CẤU TRÚC LANDING PAGE
+=================================================
+1. Hero Section  
+2. Problem → Solution  
+3. Core Features  
+4. How It Works  
+5. Business Benefits  
+6. Trust & Social Proof  
+7. Final CTA  
+8. Footer  
+
+=================================================
+DELIVERABLES (CHUẨN METAGPT)
+=================================================
+- Full landing page content
+- Frontend source code (Next.js + Tailwind)
+- Clear component separation
+- Edwin lưu toàn bộ vào docs/steps/
+
+Chỉ xuất deliverables. Không thêm giải thích hay bình luận.

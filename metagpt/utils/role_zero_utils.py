@@ -107,17 +107,46 @@ async def parse_commands(command_rsp: str, llm, exclusive_tool_commands: list[st
             - A boolean flag indicating success (True) or failure (False).
     """
     try:
+        from json_repair import repair_json
+        # Try to extract JSON block
         commands = CodeParser.parse_code(block=None, lang="json", text=command_rsp)
+        
+        # If parse_code returned the whole text (failed to find block), try a direct regex search
+        if commands == command_rsp:
+            json_match = re.search(r'\[\s*\{.*\}\s*\]', command_rsp, re.DOTALL)
+            if json_match:
+                commands = json_match.group(0)
+            else:
+                # Try to find anything between [ and ]
+                json_match = re.search(r'\[.*\]', command_rsp, re.DOTALL)
+                if json_match:
+                    commands = json_match.group(0)
+
         if commands.endswith("]") and not commands.startswith("["):
             commands = "[" + commands
-        commands = json.loads(repair_llm_raw_output(output=commands, req_keys=[None], repair_type=RepairType.JSON))
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse JSON for: {command_rsp}. Trying to repair...")
-        commands = await llm.aask(msg=JSON_REPAIR_PROMPT.format(json_data=command_rsp, json_decode_error=str(e)))
+        
+        # Use json_repair to fix literal newlines and other issues
+        repaired_json = repair_json(commands)
+        commands = json.loads(repaired_json)
+
+    except Exception as e:
+        logger.warning(f"Failed to parse JSON. Error: {e}. Trying LLM repair...")
+        # Try LLM repair as a last resort
+        repair_rsp = await llm.aask(msg=JSON_REPAIR_PROMPT.format(json_data=command_rsp, json_decode_error=str(e)))
         try:
-            commands = json.loads(CodeParser.parse_code(block=None, lang="json", text=commands))
-        except json.JSONDecodeError:
-            # repair escape error of code and math
+            from json_repair import repair_json
+            # Extract JSON from repair response
+            json_match = re.search(r'\[\s*\{.*\}\s*\]', repair_rsp, re.DOTALL)
+            if json_match:
+                commands_to_parse = json_match.group(0)
+            else:
+                commands_to_parse = CodeParser.parse_code(block=None, lang="json", text=repair_rsp)
+            
+            repaired_json = repair_json(commands_to_parse)
+            commands = json.loads(repaired_json)
+        except Exception as e2:
+            logger.error(f"LLM repair also failed: {e2}")
+            # Fallback to original logic for other errors
             commands = CodeParser.parse_code(block=None, lang="json", text=command_rsp)
             new_command = repair_escape_error(commands)
             commands = json.loads(

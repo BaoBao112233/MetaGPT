@@ -75,7 +75,7 @@ def generate_repo(
 @click.command(help="Start a new project.")
 @click.argument("idea", required=False)
 @click.option("--investment", type=float, default=3.0, help="Dollar amount to invest in the AI company.")
-@click.option("--n-round", type=int, default=5, help="Number of rounds for the simulation.")
+@click.option("--n-round", type=int, default=10, help="Number of rounds for the simulation.")
 @click.option("--code-review/--no-code-review", default=True, help="Whether to use code review.")
 @click.option("--run-tests/--no-run-tests", default=False, help="Whether to enable QA for adding & running tests.")
 @click.option("--implement/--no-implement", default=True, help="Enable or disable code implementation.")

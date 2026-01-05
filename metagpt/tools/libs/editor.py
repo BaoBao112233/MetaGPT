@@ -354,17 +354,34 @@ class Editor(BaseModel):
         output += self._print_window(self.current_file, self.current_line, self.window)
         return output
 
-    async def create_file(self, filename: str) -> str:
+    async def create_file(
+        self,
+        filename: str = None,
+        path: str = None,
+        file_path: str = None,
+        content: str = "\n",
+        file_content: str = None,
+    ) -> str:
         """Creates and opens a new file with the given name.
 
         Args:
             filename: str: The name of the file to create. If the parent directory does not exist, it will be created.
+            path: str: Alias for filename.
+            file_path: str: Alias for filename.
+            content: str: The content to write to the file.
+            file_content: str: Alias for content.
         """
+        filename = filename or path or file_path
+        content = file_content or content
+
+        if not filename:
+            raise ValueError("filename, path, or file_path must be provided.")
+
         filename = self._try_fix_path(filename)
 
         if filename.exists():
             raise FileExistsError(f"File '{filename}' already exists.")
-        await awrite(filename, "\n")
+        await awrite(filename, content)
 
         self.open_file(filename)
         return f"[File {filename} created.]"
