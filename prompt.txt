@@ -1,0 +1,127 @@
+Bạn đang vận hành trong MetaGPT Software Company framework.
+
+Mục tiêu:
+Xây dựng một landing page cao cấp cho nền tảng SaaS quản lý công việc & nhân sự,
+với tư duy thiết kế, cấu trúc và công nghệ của một sản phẩm SaaS B2B hiện đại,
+sẵn sàng cho môi trường production và doanh nghiệp.
+
+=================================================
+THIẾT LẬP CÔNG TY (CÁC VAI TRÒ METAGPT)
+=================================================
+Các vai trò sau phải phối hợp chặt chẽ:
+
+- Product Manager:
+  Xác định định vị sản phẩm, giá trị cốt lõi và cấu trúc landing page.
+
+- Architect:
+  Thiết kế kiến trúc frontend, lựa chọn công nghệ và đảm bảo khả năng mở rộng.
+
+- UI/UX Designer:
+  Thiết kế giao diện hiện đại, tối giản, chuẩn SaaS B2B cao cấp.
+
+- Frontend Engineer:
+  Triển khai landing page bằng công nghệ frontend SaaS hiện đại.
+
+- Backend Engineer:
+  Cung cấp bối cảnh nền tảng (API-first, cloud-native, bảo mật).
+
+- Project Reporter (Edwin):
+  Ghi lại toàn bộ quyết định, quy trình và source code vào thư mục docs/steps/.
+
+=================================================
+YÊU CẦU TỔNG THỂ
+=================================================
+- Tone: Chuyên nghiệp, công nghệ, đáng tin cậy, enterprise-ready
+- Phong cách: Modern, minimal, clean UI, nhiều khoảng trắng
+- Đối tượng: Doanh nghiệp, startup công nghệ, product & tech team
+- Ngôn ngữ nội dung: Tiếng Anh (ngắn gọn, rõ ràng, tập trung lợi ích)
+- Không dùng emoji
+- Không giải thích ngoài deliverables
+
+=================================================
+ĐỊNH HƯỚNG CÔNG NGHỆ & KIẾN TRÚC
+=================================================
+Landing page phải thể hiện rõ tư duy của một SaaS hiện đại:
+
+Frontend:
+- Next.js (React)
+- TypeScript
+- Kiến trúc component-based
+- Tối ưu SEO, tốc độ tải nhanh
+
+Styling:
+- Tailwind CSS
+- Design system rõ ràng, dễ mở rộng
+- Sẵn sàng Dark / Light mode
+
+Tư duy nền tảng:
+- Cloud-native
+- Secure by default
+- Scalable cho doanh nghiệp và team lớn
+
+Kết quả cuối phải mang cảm giác:
+“SaaS B2B cao cấp – production-ready – công nghệ hiện đại”
+
+=================================================
+CẤU TRÚC LANDING PAGE
+=================================================
+
+1. HERO SECTION
+- Headline lớn, mạnh, tập trung vào quản lý công việc, team và hiệu suất
+- Subheadline 1 câu mô tả giá trị cốt lõi
+- CTA:
+  - Primary: "Get Started"
+  - Secondary: "Request Demo"
+- Hình minh họa: Dashboard SaaS hiện đại (enterprise UI)
+
+2. PROBLEM → SOLUTION
+- 3–4 vấn đề phổ biến khi quản lý công việc thủ công hoặc rời rạc
+- Mỗi vấn đề đi kèm giải pháp ngắn gọn, thể hiện sức mạnh công nghệ
+
+3. CORE FEATURES (Dạng Grid / Cards)
+Mỗi feature gồm icon + tiêu đề + mô tả ngắn:
+- Task Management
+- Team Collaboration
+- Performance Tracking
+- Reports & Analytics
+- Cloud-based & Secure Infrastructure
+
+4. HOW IT WORKS
+Quy trình 3 bước:
+1. Create workspace
+2. Manage tasks & teams
+3. Track progress & performance in real time
+
+5. BUSINESS BENEFITS
+Nhấn mạnh lợi ích cho doanh nghiệp:
+- Save time
+- Increase productivity
+- Improve transparency & accountability
+- Scalable for growing teams and enterprises
+
+6. TRUST & SOCIAL PROOF
+- Placeholder logo đối tác
+- Placeholder testimonial ngắn theo phong cách B2B enterprise
+
+7. FINAL CTA
+- Headline thúc đẩy hành động
+- CTA button: "Start Your Free Trial"
+
+8. FOOTER
+- Logo
+- Links: Product / Company / Support
+- Copyright
+
+=================================================
+DELIVERABLES (CHUẨN METAGPT)
+=================================================
+- Nội dung landing page đầy đủ theo từng section
+- Cấu trúc source code frontend (Next.js + Tailwind CSS)
+- Phân tách component rõ ràng
+- Project Reporter (Edwin) phải lưu:
+  - Source code
+  - Quyết định kiến trúc
+  - Các bước triển khai
+vào thư mục docs/steps/
+
+Chỉ xuất deliverables. Không thêm giải thích hay bình luận.
