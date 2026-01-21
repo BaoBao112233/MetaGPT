@@ -1,0 +1,48 @@
+# Lead Generation Crawling Service
+
+## Goals
+Develop a Python-based crawling service that extracts lead data from multiple sources and exports to CSV.
+
+## Requirements
+
+### Functional Requirements
+1. Crawl Google Search results for keywords
+2. Crawl Facebook Search for public posts/pages
+3. Crawl Facebook Group Members from group URLs
+4. Extract structured data: full_name, phone_number, email, company_name, province_or_city, source
+5. Export data to CSV files (UTF-8 BOM, Excel-compatible)
+
+### Technical Requirements
+- Python 3.10+
+- MVC Architecture (models, views, controllers, services, utils)
+- Playwright for browser automation
+- BeautifulSoup/lxml for parsing
+- Rate limiting with backoff
+- Centralized logging
+- Environment-based configuration
+- SOLID principles
+
+### Architecture
+```
+project_root/
+├── app/
+│   ├── models/lead.py
+│   ├── views/csv_exporter.py
+│   ├── controllers/ (google, facebook_search, facebook_group)
+│   ├── services/ (crawlers)
+│   └── utils/ (browser, parser, logger, rate_limiter)
+├── config/settings.py
+├── main.py
+└── requirements.txt
+```
+
+### Output
+- google_results.csv
+- facebook_search_results.csv
+- facebook_group_members.csv
+
+### Constraints
+- No hard-coded credentials
+- Handle missing data gracefully (null values)
+- Production-ready code (no TODOs)
+- Extensible for future enhancements

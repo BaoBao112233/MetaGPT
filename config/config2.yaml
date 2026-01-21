@@ -1,5 +1,5 @@
 llm:
-  api_type: openrouter
-  base_url: "https://openrouter.ai/api/v1"
-  api_key: "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"
-  model: meta-llama/llama-3-70b-instruct
+  api_type: vertex_ai
+  max_token: 8192
+  model: gemini-2.5-flash
+  service_account_path: /home/baobao/Projects/MetaGPT/config/service-account.json

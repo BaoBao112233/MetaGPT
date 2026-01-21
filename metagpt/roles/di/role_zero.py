@@ -36,6 +36,7 @@ from metagpt.strategy.experience_retriever import DummyExpRetriever, ExpRetrieve
 from metagpt.strategy.planner import Planner
 from metagpt.tools.libs.browser import Browser
 from metagpt.tools.libs.editor import Editor
+from metagpt.tools.libs.terminal import Terminal
 from metagpt.tools.tool_recommend import BM25ToolRecommender, ToolRecommender
 from metagpt.tools.tool_registry import register_tool
 from metagpt.utils.common import any_to_str
@@ -84,8 +85,9 @@ class RoleZero(Role):
         "Editor.open_file",
     ]
     # Equipped with three basic tools by default for optional use
-    editor: Editor = Editor(enable_auto_lint=True)
-    browser: Browser = Browser()
+    editor: Editor = Field(default_factory=lambda: Editor(enable_auto_lint=True), exclude=True)
+    browser: Browser = Field(default_factory=Browser, exclude=True)
+    terminal: Terminal = Field(default_factory=Terminal, exclude=True)
 
     # Experience
     experience_retriever: Annotated[ExpRetriever, Field(exclude=True)] = DummyExpRetriever()
@@ -124,6 +126,7 @@ class RoleZero(Role):
             "Plan.replace_task": self.planner.plan.replace_task,
             "RoleZero.ask_human": self.ask_human,
             "RoleZero.reply_to_human": self.reply_to_human,
+            "Terminal.run_command": self.terminal.run_command,
         }
         if self.config.enable_search:
             self.tool_execution_map["SearchEnhancedQA.run"] = SearchEnhancedQA().run
@@ -150,6 +153,12 @@ class RoleZero(Role):
                 for i in [
                     "append_file",
                     "create_file",
+                    "create_directory",
+                    "delete_lines",
+                    "write_file",
+                    "read_file",
+                    "replace_content",
+                    "write",
                     "edit_file_by_replace",
                     "find_file",
                     "goto_line",
@@ -161,11 +170,25 @@ class RoleZero(Role):
                     "search_dir",
                     "search_file",
                     "similarity_search",
-                    # "set_workdir",
-                    "write",
                 ]
             }
         )
+        self.tool_execution_map["os.makedirs"] = self.editor.os_makedirs
+        self.tool_execution_map["Create_Directory"] = self.editor.create_directory
+        self.tool_execution_map["Create_File"] = self.editor.create_file
+        self.tool_execution_map["Write_File"] = self.editor.write_file
+        self.tool_execution_map["Edit_File"] = self.editor.edit_file_by_replace
+        self.tool_execution_map["Insert_Content"] = self.editor.insert_content_at_line
+        self.tool_execution_map["Delete_Lines"] = self.editor.delete_lines
+        self.tool_execution_map["Execute_Shell"] = self.terminal.run_command
+        self.tool_execution_map["Execute_Command"] = self.terminal.run_command
+        self.tool_execution_map["Run_Command"] = self.terminal.run_command
+        self.tool_execution_map["File.append_to_file"] = self.editor.append_file
+        self.tool_execution_map["append_to_file"] = self.editor.append_file
+        self.tool_execution_map["append_file"] = self.editor.append_file
+        self.tool_execution_map["insert_content_to_file"] = self.editor.append_file
+        self.tool_execution_map["FileExists"] = self.editor.file_exists
+        self.tool_execution_map["File_Exists"] = self.editor.file_exists
         # can be updated by subclass
         self._update_tool_execution()
         return self
@@ -391,16 +414,84 @@ class RoleZero(Role):
                 special_command_output = await self._run_special_command(cmd)
                 outputs.append(output + ":" + special_command_output)
                 continue
+
+            # robustness fallback for naming hallucinations
+            command_name = cmd["command_name"]
+            if command_name not in self.tool_execution_map:
+                valid_prefixes = ["Editor", "Terminal", "Browser", "RoleZero", "Plan", "TeamLeader", "DataAnalyst", "File"]
+                found = False
+
+                # Handle "File.write_file" -> "Editor.write_file"
+                name_to_search = command_name
+                if "." in command_name:
+                    name_to_search = command_name.split(".")[-1]
+
+                for prefix in valid_prefixes:
+                    for name in [name_to_search, name_to_search.lower()]:
+                        potential_name = f"{prefix}.{name}"
+                        if potential_name in self.tool_execution_map:
+                            command_name = potential_name
+                            found = True
+                            break
+                        # try snake to camel
+                        if "_" in name:
+                            camel = "".join([p.capitalize() for p in name.split("_")])
+                            p2 = f"{prefix}.{camel}"
+                            if p2 in self.tool_execution_map:
+                                command_name = p2
+                                found = True
+                                break
+                    if found:
+                        break
+
             # run command as specified by tool_execute_map
-            if cmd["command_name"] in self.tool_execution_map:
-                tool_obj = self.tool_execution_map[cmd["command_name"]]
+            if command_name in self.tool_execution_map:
+                tool_obj = self.tool_execution_map[command_name]
                 try:
-                    if inspect.iscoroutinefunction(tool_obj):
-                        tool_output = await tool_obj(**cmd["args"])
-                    else:
-                        tool_output = tool_obj(**cmd["args"])
+                    # Robustness: map common argument synonyms
+                    args = cmd.get("args", {}).copy()
+                    sig = inspect.signature(tool_obj)
+                    param_names = list(sig.parameters.keys())
+                    
+                    # Map synonyms for common parameter names
+                    synonyms = {
+                        "cmd": ["command", "command_line", "line", "exec"],
+                        "path": ["filename", "file_name", "filepath", "file_path", "fn", "directory_name", "directory"],
+                        "file_name": ["filename", "filepath", "file_path", "path", "fn"],
+                        "filename": ["file_name", "filepath", "file_path", "path", "fn"],
+                        "directory_name": ["path", "directory", "dir_path", "folder"],
+                        "content": ["insert_content", "new_content", "text", "body"],
+                        "insert_content": ["content", "new_content", "text", "body"],
+                        "to_replace": ["old_content", "search_text", "replace_this"],
+                    }
+                    
+                    final_args = {}
+                    for param in param_names:
+                        if param == "self":
+                            continue
+                        # If exact match found, use it
+                        if param in args:
+                            final_args[param] = args.pop(param)
+                        # Else look for synonyms
+                        elif param in synonyms:
+                            for syn in synonyms[param]:
+                                if syn in args:
+                                    final_args[param] = args.pop(syn)
+                                    break
+                    
+                    # Add remaining args if any (for flexibility)
+                    final_args.update(args)
+
+                    try:
+                        if inspect.iscoroutinefunction(tool_obj):
+                            tool_output = await asyncio.wait_for(tool_obj(**final_args), timeout=120)
+                        else:
+                            tool_output = tool_obj(**final_args)
+                    except asyncio.TimeoutError:
+                        tool_output = f"Error: Command {cmd['command_name']} timed out after 120 seconds."
+                        
                     if tool_output:
-                        output += f": {str(tool_output)}"
+                        output += f": {str(tool_output)[:10000]}" # Truncate extremely large outputs
                     outputs.append(output)
                 except Exception as e:
                     tb = traceback.format_exc()

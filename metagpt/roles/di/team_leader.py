@@ -25,8 +25,8 @@ class TeamLeader(RoleZero):
     profile: str = "Team Leader"
     goal: str = "Manage a team to assist users"
     thought_guidance: str = TL_THOUGHT_GUIDANCE
-    # TeamLeader only reacts once each time, but may encounter errors or need to ask human, thus allowing 2 more turns
-    max_react_loop: int = 3
+    # TeamLeader only reacts once each time, but may encounter errors or need to ask human, thus allowing more turns
+    max_react_loop: int = 100
 
     tools: list[str] = ["Plan", "RoleZero", "TeamLeader"]
 

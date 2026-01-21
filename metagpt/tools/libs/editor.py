@@ -14,6 +14,7 @@ import tiktoken
 from pydantic import BaseModel, ConfigDict
 
 from metagpt.const import DEFAULT_MIN_TOKEN_COUNT, DEFAULT_WORKSPACE_ROOT
+from metagpt.logs import logger
 from metagpt.tools.libs.linter import Linter
 from metagpt.tools.tool_registry import register_tool
 from metagpt.utils.common import awrite
@@ -130,6 +131,10 @@ class Editor(BaseModel):
         # self.resource.report(path, "path")
         return f"The writing/coding the of the file {os.path.basename(path)}' is now completed. The file '{os.path.basename(path)}' has been successfully created."
 
+    def write_file(self, path: str, content: str):
+        """Write the whole content to a file. Alias for write."""
+        return self.write(path, content)
+
     async def read(self, path: str) -> FileBlock:
         """Read the whole content of a file. Using absolute paths as the argument for specifying the file location."""
 
@@ -156,6 +161,10 @@ class Editor(BaseModel):
             block_content="".join(lines_with_num),
         )
         return result
+
+    async def read_file(self, path: str) -> FileBlock:
+        """Reads the given file and returns its content. Alias for read."""
+        return await self.read(path)
 
     @staticmethod
     def _is_valid_filename(file_name: str) -> bool:
@@ -206,9 +215,13 @@ class Editor(BaseModel):
         Returns:
             tuple[str | None, int | None]: (lint_error, first_error_line_number)
         """
-
-        linter = Linter(root=self.working_dir)
-        lint_error = linter.lint(str(file_path))
+        try:
+            linter = Linter(root=self.working_dir)
+            lint_error = linter.lint(str(file_path))
+        except Exception as e:
+            logger.warning(f"Linter failed for {file_path}: {e}")
+            return None, None
+        
         if not lint_error:
             # Linting successful. No issues found.
             return None, None
@@ -354,20 +367,64 @@ class Editor(BaseModel):
         output += self._print_window(self.current_file, self.current_line, self.window)
         return output
 
-    async def create_file(self, filename: str) -> str:
+    async def create_file(self, filename: str, content: str = "") -> str:
         """Creates and opens a new file with the given name.
 
         Args:
             filename: str: The name of the file to create. If the parent directory does not exist, it will be created.
+            content: str: Optional content to write to the file.
         """
         filename = self._try_fix_path(filename)
 
         if filename.exists():
-            raise FileExistsError(f"File '{filename}' already exists.")
-        await awrite(filename, "\n")
+            if filename.is_dir():
+                raise IsADirectoryError(f"'{filename}' is a directory.")
+            if content:
+                await awrite(filename, content)
+                self.open_file(filename)
+                return f"[File {filename} already exists. Content updated.]"
+            return f"[File {filename} already exists.]"
+        
+        await awrite(filename, content or "\n")
 
         self.open_file(filename)
         return f"[File {filename} created.]"
+
+    def create_directory(self, path: str) -> str:
+        """Creates a new directory.
+
+        Args:
+            path: str: The name of the directory to create.
+        """
+        path_obj = self._try_fix_path(path)
+        path_obj.mkdir(parents=True, exist_ok=True)
+        return f"[Directory {path} created.]"
+
+    def delete_lines(self, file_path: str, start_line: int, end_line: int) -> str:
+        """Deletes lines from start_line to end_line (inclusive) in the specified file.
+
+        Args:
+            file_path: str: The path to the file to edit.
+            start_line: int: The start line number to delete.
+            end_line: int: The end line number to delete.
+        """
+        file_path_obj = self._try_fix_path(file_path)
+        return self._edit_file_impl(
+            file_path_obj,
+            start=start_line,
+            end=end_line,
+            content="",
+            is_insert=False,
+            is_append=False,
+        )
+
+    def os_makedirs(self, path: str, exist_ok: bool = True) -> str:
+        """Alias for create_directory."""
+        return self.create_directory(path)
+
+    def file_exists(self, path: str) -> bool:
+        """Check if a file exists."""
+        return self._try_fix_path(path).exists()
 
     @staticmethod
     def _append_impl(lines, content):
@@ -823,6 +880,10 @@ class Editor(BaseModel):
         # TODO: automatically tries to fix linter error (maybe involve some static analysis tools on the location near the edit to figure out indentation)
         self.resource.report(file_name, "path")
         return ret_str
+
+    def replace_content(self, file_name: str, to_replace: str, new_content: str) -> str:
+        """Replace to_replace with new_content in file_name."""
+        return self._edit_file_by_replace(file_name, to_replace, new_content)
 
     def _edit_file_by_replace(self, file_name: str, to_replace: str, new_content: str) -> str:
         """Edit a file. This will search for `to_replace` in the given file and replace it with `new_content`.

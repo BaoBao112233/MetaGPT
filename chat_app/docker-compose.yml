@@ -11,15 +11,15 @@ services:
     volumes:
       # Mount config directory with credentials
       - ../config:/app/config:ro
-      # Optional: Mount for hot-reload during development
-      # - ./static:/app/chat_app/static
-      # - ./main.py:/app/chat_app/main.py
+      # Mount workspace to persist generated files
+      - ../workspace:/app/workspace
     environment:
       - PYTHONUNBUFFERED=1
+      - CONFIG_ROOT=/app/config
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s

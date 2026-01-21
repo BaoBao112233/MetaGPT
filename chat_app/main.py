@@ -4,133 +4,90 @@
 FastAPI backend for MetaGPT Chat Interface
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, HTMLResponse
-from pydantic import BaseModel
-import asyncio
-from pathlib import Path
-import sys
 import os
+import sys
+import json
+from pathlib import Path
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
+from pydantic import BaseModel
 
 # Add parent directory to path to import metagpt
-sys.path.insert(0, str(Path(__file__).parent.parent))
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR))
 
-# Set default config path if in Docker
-if os.path.exists('/app/config/config2.yaml'):
-    os.environ.setdefault('CONFIG_ROOT', '/app/config')
-    
-    # Override service_account_path to use container path
-    import yaml
-    config_path = '/app/config/config2.yaml'
-    try:
-        with open(config_path, 'r') as f:
-            config_data = yaml.safe_load(f)
-        
-        # Update service_account_path to container path if it's a host path
-        if 'llm' in config_data and 'service_account_path' in config_data['llm']:
-            old_path = config_data['llm']['service_account_path']
-            # If path contains host path, replace with container path
-            if '/home/' in old_path or old_path.startswith('/'):
-                config_data['llm']['service_account_path'] = '/app/config/service-account.json'
-                
-                # Write updated config
-                with open(config_path, 'w') as f:
-                    yaml.dump(config_data, f, default_flow_style=False)
-    except Exception as e:
-        print(f"Warning: Could not update config: {e}")
-
-from metagpt.llm import LLM
-from metagpt.logs import log_llm_stream, create_llm_stream_queue, get_llm_stream_queue
+from metagpt.const import DEFAULT_WORKSPACE_ROOT
+from chat_app.manager import MetaGPTManager
 
 app = FastAPI(title="MetaGPT Chat API")
 
-# Get the directory where main.py is located
+# Workspaces and static directories
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+WASHROOM_DIR = ROOT_DIR / "workspace"
 
-# Mount static files
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+manager = MetaGPTManager(workspace_path=WASHROOM_DIR)
+
+# Ensure static directory exists
+STATIC_DIR.mkdir(exist_ok=True)
 
 class ChatRequest(BaseModel):
     message: str
-    stream: bool = True
 
-class ChatResponse(BaseModel):
-    response: str
+@app.post("/api/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    Stream chat response including reasoning/logs
+    """
+    async def event_generator():
+        async for item in manager.run_project(request.message):
+            yield f"data: {json.dumps(item)}\n\n"
+        yield "data: {\"type\": \"done\"}\n\n"
 
-# Initialize LLM lazily
-llm = None
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-def get_llm():
-    global llm
-    if llm is None:
-        llm = LLM()
-    return llm
+@app.get("/api/files")
+async def list_files():
+    """
+    List all generated files in the workspace
+    """
+    return manager.get_generated_files()
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root():
-    """Serve the main HTML page"""
-    html_path = STATIC_DIR / "index.html"
-    with open(html_path, "r") as f:
-        return f.read()
-
-@app.post("/chat/stream")
-async def chat_stream(request: ChatRequest):
-    """Stream chat responses"""
-    async def generate():
-        try:
-            llm_instance = get_llm()
-            # Create a queue for streaming
-            queue = create_llm_stream_queue()
-            
-            # Start the LLM request in a separate task
-            async def get_response():
-                response = await llm_instance.aask(request.message)
-                # Send end marker
-                await queue.put(None)
-                return response
-            
-            # Start the task
-            task = asyncio.create_task(get_response())
-            
-            # Stream the response
-            while True:
-                try:
-                    chunk = await asyncio.wait_for(queue.get(), timeout=0.1)
-                    if chunk is None:  # End marker
-                        break
-                    yield f"data: {chunk}\n\n"
-                except asyncio.TimeoutError:
-                    # Check if task is done
-                    if task.done():
-                        break
-                    continue
-            
-            # Ensure task is complete
-            await task
-            yield "data: [DONE]\n\n"
-            
-        except Exception as e:
-            yield f"data: Error: {str(e)}\n\n"
-            yield "data: [DONE]\n\n"
-    
-    return StreamingResponse(generate(), media_type="text/event-stream")
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    """Non-streaming chat endpoint"""
-    try:
-        llm_instance = get_llm()
-        response = await llm_instance.aask(request.message)
-        return ChatResponse(response=response)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/api/files/{file_path:path}")
+async def get_file(file_path: str):
+    """
+    Download a specific file from the workspace
+    """
+    full_path = WASHROOM_DIR / file_path
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(full_path, filename=full_path.name)
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
     return {"status": "healthy"}
+
+# Serve the frontend (will be built and placed in static/ or handled by Vite dev server)
+# For now, if index.html exists in static, serve it. 
+# Otherwise, we might be in development mode using Vite.
+@app.get("/{rest_of_path:path}")
+async def serve_frontend(rest_of_path: str):
+    if rest_of_path.startswith("api/") or rest_of_path == "health":
+        raise HTTPException(status_code=404)
+        
+    file_path = STATIC_DIR / rest_of_path
+    if file_path.exists() and file_path.is_file():
+        return FileResponse(file_path)
+    
+    # Fallback to index.html for SPA
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+        
+    return HTMLResponse("Frontend not found. Please build the frontend first.", status_code=404)
 
 if __name__ == "__main__":
     import uvicorn
